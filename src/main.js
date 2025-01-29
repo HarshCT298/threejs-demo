@@ -808,9 +808,7 @@ class SceneSetup {
     });
 
     clearBtn.addEventListener("click", () => {
-      if (this.isPointSelectionMode) {
-        this.clearAllGeometry();
-      }
+      this.clearAllScene();
     });
   }
 
@@ -878,16 +876,16 @@ class SceneSetup {
 
   clampPositionInsideBoundingBox(position) {
     if (!this.boundingBox) return position; // Ensure bounding box exists
- 
+
     // Get bounding box min and max
     const min = this.boundingBox.min;
     const max = this.boundingBox.max;
- 
+
     // Clamp position inside bounding box
     position.x = Math.max(min.x, Math.min(max.x, position.x));
     position.y = Math.max(min.y, Math.min(max.y, position.y));
     position.z = Math.max(min.z, Math.min(max.z, position.z));
- 
+
     return position;
   }
 
@@ -895,27 +893,27 @@ class SceneSetup {
     event.preventDefault();
     const shape = event.dataTransfer.getData("text/plain");
     console.log(`Dropped shape: ${shape}`); // Debug log
- 
+
     // Convert mouse position to normalized device coordinates (NDC)
     const mouse = new THREE.Vector2();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
- 
+
     // Raycast from the camera to the scene
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, this.camera);
     const intersects = raycaster.intersectObjects(this.scene.children, true);
- 
+
     let dropPosition = new THREE.Vector3(0, 5, 0); // Default position if no intersection
- 
+
     if (intersects.length > 0) {
       dropPosition.copy(intersects[0].point);
       dropPosition.y += 1; // Raise a little to prevent overlap
     }
- 
+
     // Clamp position inside bounding box
     dropPosition = this.clampPositionInsideBoundingBox(dropPosition);
- 
+
     this.createShape(shape, dropPosition);
   }
 
@@ -923,31 +921,30 @@ class SceneSetup {
     let geometry;
     switch (shape) {
       case "circle":
-        geometry = new THREE.CircleGeometry(7, 32);
+        geometry = new THREE.CircleGeometry(1.5, 32);
         break;
       case "rectangle":
-        geometry = new THREE.BoxGeometry(14, 6, 2);
+        geometry = new THREE.BoxGeometry(2.8, 1.3, 2);
         break;
       case "square":
-        geometry = new THREE.BoxGeometry(8, 8, 8);
+        geometry = new THREE.BoxGeometry(1.3, 1.3, 1.3);
         break;
       default:
         console.error(`Unknown shape: ${shape}`);
         return;
     }
- 
+
     const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.copy(position); // Set position dynamically
     this.scene.add(mesh);
- 
+
     console.log(`Shape ${shape} created at`, position); // Debug log
- 
+
     // Attach transform controls to allow moving
     this.transformControls.attach(mesh);
   }
 
-  
   onMouseClick(event) {
     const mouse = new THREE.Vector2();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -958,88 +955,125 @@ class SceneSetup {
 
     const intersects = raycaster.intersectObjects(this.scene.children, true);
     if (intersects.length > 0) {
-        const point = intersects[0].point;
-        const clampedPoint = this.clampPositionInsideBoundingBox(point);
-        this.points.push(clampedPoint);
+      const point = intersects[0].point;
+      const clampedPoint = this.clampPositionInsideBoundingBox(point);
+      this.points.push(clampedPoint);
 
-        if (document.getElementById("continuousModeToggle").checked) {
-            this.updatePipe(); // Extend the pipe continuously
-        } else if (document.getElementById("pointSelectionToggle").checked) {
-            if (this.points.length === 2) {
-                this.createGeometryBetweenPoints();
-                this.points = []; // Reset for next selection
-            }
+      if (document.getElementById("continuousModeToggle").checked) {
+        this.updatePipe(); // Extend the pipe continuously
+      } else if (document.getElementById("pointSelectionToggle").checked) {
+        if (this.points.length === 2) {
+          this.createGeometryBetweenPoints();
+          this.points = []; // Reset for next selection
         }
+      }
     }
-}
+  }
 
-// updatePipe() {
-//   if (this.points.length < 2) return;
+  // updatePipe() {
+  //   if (this.points.length < 2) return;
 
-//   const curve = new THREE.CatmullRomCurve3(this.points);
-//   const tubeGeometry = new THREE.TubeGeometry(curve, 100, 0.6, 16, false);
-//   const tubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  //   const curve = new THREE.CatmullRomCurve3(this.points);
+  //   const tubeGeometry = new THREE.TubeGeometry(curve, 100, 0.6, 16, false);
+  //   const tubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 
-//   if (this.pipe) this.scene.remove(this.pipe);
-//   this.pipe = new THREE.Mesh(tubeGeometry, tubeMaterial);
-//   this.scene.add(this.pipe);
-// }
+  //   if (this.pipe) this.scene.remove(this.pipe);
+  //   this.pipe = new THREE.Mesh(tubeGeometry, tubeMaterial);
+  //   this.scene.add(this.pipe);
+  // }
 
-updatePipe() {
+  updatePipe() {
     if (this.points.length < 2) return; // Need at least two points
 
     // Remove the old pipe segments
-    this.cylinders.forEach(cylinder => this.scene.remove(cylinder));
+    this.cylinders.forEach((cylinder) => this.scene.remove(cylinder));
     this.cylinders = [];
 
     for (let i = 0; i < this.points.length - 1; i++) {
-        const point1 = this.points[i];
-        const point2 = this.points[i + 1];
+      const point1 = this.points[i];
+      const point2 = this.points[i + 1];
 
-        // Create a cylinder between the two points
-        const distance = point1.distanceTo(point2);
-        const cylinderGeometry = new THREE.CylinderGeometry(0.6, 0.6, distance, 16);
-        const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+      // Create a cylinder between the two points
+      const distance = point1.distanceTo(point2);
+      const cylinderGeometry = new THREE.CylinderGeometry(
+        0.6,
+        0.6,
+        distance,
+        16
+      );
+      const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
 
-        // Compute the midpoint
-        const midpoint = new THREE.Vector3().addVectors(point1, point2).multiplyScalar(0.5);
-        cylinder.position.copy(midpoint);
+      // Compute the midpoint
+      const midpoint = new THREE.Vector3()
+        .addVectors(point1, point2)
+        .multiplyScalar(0.5);
+      cylinder.position.copy(midpoint);
 
-        // Compute the direction vector
-        const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
-        const upVector = new THREE.Vector3(0, 1, 0);
-        const quaternion = new THREE.Quaternion().setFromUnitVectors(upVector, direction);
-        cylinder.setRotationFromQuaternion(quaternion);
+      // Compute the direction vector
+      const direction = new THREE.Vector3()
+        .subVectors(point2, point1)
+        .normalize();
+      const upVector = new THREE.Vector3(0, 1, 0);
+      const quaternion = new THREE.Quaternion().setFromUnitVectors(
+        upVector,
+        direction
+      );
+      cylinder.setRotationFromQuaternion(quaternion);
 
-        // Add to scene and store
-        this.scene.add(cylinder);
-        this.cylinders.push(cylinder);
+      // Add to scene and store
+      this.scene.add(cylinder);
+      this.cylinders.push(cylinder);
     }
-}
+  }
 
+  createGeometryBetweenPoints() {
+    const [point1, point2] = this.points;
 
-createGeometryBetweenPoints() {
-  const [point1, point2] = this.points;
+    const distance = point1.distanceTo(point2);
+    const cylinderGeometry = new THREE.CylinderGeometry(0.6, 0.6, distance, 32);
+    const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
 
-  const distance = point1.distanceTo(point2);
-  const cylinderGeometry = new THREE.CylinderGeometry(0.6, 0.6, distance, 32);
-  const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-  const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+    const midpoint = new THREE.Vector3()
+      .addVectors(point1, point2)
+      .multiplyScalar(0.5);
+    cylinder.position.copy(midpoint);
 
-  const midpoint = new THREE.Vector3().addVectors(point1, point2).multiplyScalar(0.5);
-  cylinder.position.copy(midpoint);
+    const direction = new THREE.Vector3()
+      .subVectors(point2, point1)
+      .normalize();
+    const upVector = new THREE.Vector3(0, 1, 0);
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(
+      upVector,
+      direction
+    );
+    cylinder.setRotationFromQuaternion(quaternion);
 
-  const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
-  const upVector = new THREE.Vector3(0, 1, 0);
-  const quaternion = new THREE.Quaternion().setFromUnitVectors(upVector, direction);
-  cylinder.setRotationFromQuaternion(quaternion);
+    this.scene.add(cylinder);
+    this.transformControls.attach(cylinder);
+  }
 
-  this.scene.add(cylinder);
-  this.transformControls.attach(cylinder);
-}
+  clearAllScene() {
+    // Remove all objects from the scene
+    while (this.scene.children.length > 0) {
+      this.scene.remove(this.scene.children[0]);
+    }
 
+    // Clear arrays and reset variables
+    this.points = [];
+    this.pointMeshes = [];
+    this.lines = [];
+    this.cylinders = [];
 
+    // Re-add transform controls
+    this.scene.add(this.transformControls);
+
+    // Re-add grid, bounding box, and lights
+    this.createGrid();
+    this.createBoundingBox();
+    this.setupLights();
+  }
 
   isPointInsideBoundingBox(point) {
     return this.boundingBox.containsPoint(point);
