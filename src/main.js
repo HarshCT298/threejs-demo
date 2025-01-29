@@ -973,16 +973,49 @@ class SceneSetup {
     }
 }
 
+// updatePipe() {
+//   if (this.points.length < 2) return;
+
+//   const curve = new THREE.CatmullRomCurve3(this.points);
+//   const tubeGeometry = new THREE.TubeGeometry(curve, 100, 0.6, 16, false);
+//   const tubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+
+//   if (this.pipe) this.scene.remove(this.pipe);
+//   this.pipe = new THREE.Mesh(tubeGeometry, tubeMaterial);
+//   this.scene.add(this.pipe);
+// }
+
 updatePipe() {
-  if (this.points.length < 2) return;
+    if (this.points.length < 2) return; // Need at least two points
 
-  const curve = new THREE.CatmullRomCurve3(this.points);
-  const tubeGeometry = new THREE.TubeGeometry(curve, 100, 0.6, 16, false);
-  const tubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    // Remove the old pipe segments
+    this.cylinders.forEach(cylinder => this.scene.remove(cylinder));
+    this.cylinders = [];
 
-  if (this.pipe) this.scene.remove(this.pipe);
-  this.pipe = new THREE.Mesh(tubeGeometry, tubeMaterial);
-  this.scene.add(this.pipe);
+    for (let i = 0; i < this.points.length - 1; i++) {
+        const point1 = this.points[i];
+        const point2 = this.points[i + 1];
+
+        // Create a cylinder between the two points
+        const distance = point1.distanceTo(point2);
+        const cylinderGeometry = new THREE.CylinderGeometry(0.6, 0.6, distance, 16);
+        const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+
+        // Compute the midpoint
+        const midpoint = new THREE.Vector3().addVectors(point1, point2).multiplyScalar(0.5);
+        cylinder.position.copy(midpoint);
+
+        // Compute the direction vector
+        const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
+        const upVector = new THREE.Vector3(0, 1, 0);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(upVector, direction);
+        cylinder.setRotationFromQuaternion(quaternion);
+
+        // Add to scene and store
+        this.scene.add(cylinder);
+        this.cylinders.push(cylinder);
+    }
 }
 
 
