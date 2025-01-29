@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Scene</title>
+    <style>
+        /* Reset default margin and padding */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Make the container take the full height of the viewport */
+        html,
+        body {
+            height: 100%;
+        }
+
+        /* Flexbox layout for the container */
+        #container {
+            display: flex;
+            height: 100%;
+        }
+
+        /* Canvas container takes up 80% of the width */
+        #canvas-container {
+            flex: 1;
+            height: 100%;
+            background-color: #f0f0f0;
+            width: 80%;
+        }
+
+        /* Sidebar takes up 20% of the width */
+        #sidebar {
+            width: 20%;
+            padding: 20px;
+            background-color: #f4f4f4;
+            border-left: 1px solid #ccc;
+            overflow-y: auto;
+            /* Add scroll if content overflows */
+        }
+
+        /* Style for the shape items */
+        .model-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .model-item:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <!-- Canvas container -->
+        <div id="canvas-container"></div>
+
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <h2>Shapes</h2>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            <div class="model-item" draggable="true" data-shape="circle">
+                Circle
+            </div>
+            <div class="model-item" draggable="true" data-shape="rectangle">
+                Rectangle
+            </div>
+            <div class="model-item" draggable="true" data-shape="square">
+                Square
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
