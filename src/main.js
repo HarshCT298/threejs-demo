@@ -949,78 +949,63 @@ class SceneSetup {
 
   
   onMouseClick(event) {
-    if (!this.isPointSelectionMode) {
-      return;
-    }
-
     const mouse = new THREE.Vector2();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Raycast from the camera to the scene
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, this.camera);
 
     const intersects = raycaster.intersectObjects(this.scene.children, true);
     if (intersects.length > 0) {
         const point = intersects[0].point;
-        this.points.push(point);
+        const clampedPoint = this.clampPositionInsideBoundingBox(point);
+        this.points.push(clampedPoint);
 
-        // Ensure the pipe stays inside the bounding box
-        this.points[this.points.length - 1] = this.clampPositionInsideBoundingBox(point);
-
-        this.updatePipe();
+        if (document.getElementById("continuousModeToggle").checked) {
+            this.updatePipe(); // Extend the pipe continuously
+        } else if (document.getElementById("pointSelectionToggle").checked) {
+            if (this.points.length === 2) {
+                this.createGeometryBetweenPoints();
+                this.points = []; // Reset for next selection
+            }
+        }
     }
-  }
-
-  updatePipe() {
-    if (this.points.length < 2) return; // Need at least two points to form a pipe
-
-    // Create a smooth curve through the points
-    const curve = new THREE.CatmullRomCurve3(this.points);
-    
-    // Generate tube geometry along the curve
-    const tubeGeometry = new THREE.TubeGeometry(curve, 100, 0.6, 16, false);
-    const tubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: false });
-    
-    // Remove the old pipe if it exists
-    if (this.pipe) this.scene.remove(this.pipe);
-    
-    // Create and add the new pipe
-    this.pipe = new THREE.Mesh(tubeGeometry, tubeMaterial);
-    this.scene.add(this.pipe);
 }
 
+updatePipe() {
+  if (this.points.length < 2) return;
+
+  const curve = new THREE.CatmullRomCurve3(this.points);
+  const tubeGeometry = new THREE.TubeGeometry(curve, 100, 0.6, 16, false);
+  const tubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+
+  if (this.pipe) this.scene.remove(this.pipe);
+  this.pipe = new THREE.Mesh(tubeGeometry, tubeMaterial);
+  this.scene.add(this.pipe);
+}
+
+
 createGeometryBetweenPoints() {
-  const point1 = this.points[0];
-  const point2 = this.points[1];
+  const [point1, point2] = this.points;
 
-  // Calculate the distance between the two points
   const distance = point1.distanceTo(point2);
-
-  // Create a cylinder between the two points
   const cylinderGeometry = new THREE.CylinderGeometry(0.6, 0.6, distance, 32);
   const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
 
-  // Compute the midpoint
   const midpoint = new THREE.Vector3().addVectors(point1, point2).multiplyScalar(0.5);
   cylinder.position.copy(midpoint);
 
-  // Compute the direction vector
   const direction = new THREE.Vector3().subVectors(point2, point1).normalize();
-  
-  // Create a quaternion to align the cylinder with the direction
-  const upVector = new THREE.Vector3(0, 1, 0); // Default cylinder orientation in Three.js
+  const upVector = new THREE.Vector3(0, 1, 0);
   const quaternion = new THREE.Quaternion().setFromUnitVectors(upVector, direction);
   cylinder.setRotationFromQuaternion(quaternion);
 
-  // Add the cylinder to the scene
   this.scene.add(cylinder);
-
-  // Attach transform controls to the new shape
   this.transformControls.attach(cylinder);
 }
+
 
 
   isPointInsideBoundingBox(point) {
